@@ -1,0 +1,1 @@
+ALTER TABLE "diet_types" ADD COLUMN "description" text;
