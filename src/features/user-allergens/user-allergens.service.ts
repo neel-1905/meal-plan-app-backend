@@ -24,22 +24,26 @@ export class UserAllergensService {
     return db.transaction(async (tx) => {
       await tx.delete(userAllergens).where(eq(userAllergens.userId, userId));
 
-      await tx.insert(userAllergens).values(
-        dto.allergenIds.map((allergenId) => ({
-          userId,
-          allergenId,
-        })),
-      );
+      if (dto.allergenIds.length > 0) {
+        await tx.insert(userAllergens).values(
+          dto.allergenIds.map((allergenId) => ({
+            userId,
+            allergenId,
+          })),
+        );
+      }
 
       return tx
         .select({
           id: allergens.id,
+          code: allergens.code,
           name: allergens.name,
           description: allergens.description,
         })
         .from(userAllergens)
         .innerJoin(allergens, eq(userAllergens.allergenId, allergens.id))
-        .where(eq(userAllergens.userId, userId));
+        .where(eq(userAllergens.userId, userId))
+        .orderBy(allergens.name);
     });
   }
 }

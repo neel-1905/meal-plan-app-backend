@@ -2,7 +2,7 @@ import { ArrayNotEmpty, IsArray, IsUUID } from 'class-validator';
 
 export class UpdateUserDietTypesDto {
   @IsArray()
-  @ArrayNotEmpty()
+  // @ArrayNotEmpty()
   @IsUUID('4', { each: true })
   dietTypeIds: string[];
 }

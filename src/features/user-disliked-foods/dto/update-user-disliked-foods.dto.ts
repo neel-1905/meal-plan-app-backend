@@ -1,8 +1,8 @@
 import { ArrayNotEmpty, IsArray, IsUUID } from 'class-validator';
 
-export class UpdateUserAllergensDto {
+export class UpdateUserDislikedFoodsDto {
   @IsArray()
-  // @ArrayNotEmpty()
+  @ArrayNotEmpty()
   @IsUUID('4', { each: true })
-  allergenIds: string[];
+  foodIds: string[];
 }

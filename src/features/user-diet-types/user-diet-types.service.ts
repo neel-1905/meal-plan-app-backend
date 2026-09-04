@@ -22,28 +22,28 @@ export class UserDietTypesService {
 
   async updateUserDietTypes(userId: string, dto: UpdateUserDietTypesDto) {
     return db.transaction(async (tx) => {
-      // Remove the user's existing diet selections.
       await tx.delete(userDietTypes).where(eq(userDietTypes.userId, userId));
 
-      // Add the new selections.
-      await tx.insert(userDietTypes).values(
-        dto.dietTypeIds.map((dietTypeId) => ({
-          userId,
-          dietTypeId,
-        })),
-      );
+      if (dto.dietTypeIds.length > 0) {
+        await tx.insert(userDietTypes).values(
+          dto.dietTypeIds.map((dietTypeId) => ({
+            userId,
+            dietTypeId,
+          })),
+        );
+      }
 
-      // Return the updated selections.
       return tx
         .select({
           id: dietTypes.id,
+          code: dietTypes.code,
           name: dietTypes.name,
           description: dietTypes.description,
-          code: dietTypes.code,
         })
         .from(userDietTypes)
         .innerJoin(dietTypes, eq(userDietTypes.dietTypeId, dietTypes.id))
-        .where(eq(userDietTypes.userId, userId));
+        .where(eq(userDietTypes.userId, userId))
+        .orderBy(dietTypes.name);
     });
   }
 }
