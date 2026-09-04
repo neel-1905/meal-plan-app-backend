@@ -20,24 +20,32 @@ export class UserPreferencesService {
     return preferences;
   }
 
-  async updatePreferences(userId: string, dto: UpdateUserPreferencesDto) {
+  async updatePreferences(
+    userId: string,
+    dto: UpdateUserPreferencesDto,
+  ) {
     const [preferences] = await db
       .insert(userPreferences)
       .values({
         userId,
         defaultServings: dto.defaultServings,
         onboardingCompleted: dto.onboardingCompleted,
+        reminderEnabled: dto.reminderEnabled,
+        reminderDay: dto.reminderDay,
+        reminderTime: dto.reminderTime,
       })
       .onConflictDoUpdate({
         target: userPreferences.userId,
         set: {
           defaultServings: dto.defaultServings,
           onboardingCompleted: dto.onboardingCompleted,
+          reminderEnabled: dto.reminderEnabled,
+          reminderDay: dto.reminderDay,
+          reminderTime: dto.reminderTime,
           updatedAt: new Date(),
         },
       })
       .returning();
 
     return preferences;
-  }
 }
