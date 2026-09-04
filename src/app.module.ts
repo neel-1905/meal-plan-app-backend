@@ -8,6 +8,7 @@ import { DietTypesModule } from './features/diet-types/diet-types.module.js';
 import { UserDietTypesModule } from './features/user-diet-types/user-diet-types.module.js';
 import { UserAllergensModule } from './features/user-allergens/user-allergens.module.js';
 import { AllergensModule } from './features/allergens/allergens.module.js';
+import { FoodsModule } from './features/foods/foods.module.js';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { AllergensModule } from './features/allergens/allergens.module.js';
     UserDietTypesModule,
     UserAllergensModule,
     AllergensModule,
+    FoodsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

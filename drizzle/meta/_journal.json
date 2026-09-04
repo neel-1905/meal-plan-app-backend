@@ -29,6 +29,20 @@
       "when": 1788545549828,
       "tag": "0003_married_roulette",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788546396814,
+      "tag": "0004_add_updatedAt_foods",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788546452746,
+      "tag": "0005_add_description_foods",
+      "breakpoints": true
     }
   ]
 }
