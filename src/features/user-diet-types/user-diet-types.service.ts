@@ -13,6 +13,7 @@ export class UserDietTypesService {
         id: dietTypes.id,
         name: dietTypes.name,
         description: dietTypes.description,
+        code: dietTypes.code,
       })
       .from(userDietTypes)
       .innerJoin(dietTypes, eq(userDietTypes.dietTypeId, dietTypes.id))
@@ -38,6 +39,7 @@ export class UserDietTypesService {
           id: dietTypes.id,
           name: dietTypes.name,
           description: dietTypes.description,
+          code: dietTypes.code,
         })
         .from(userDietTypes)
         .innerJoin(dietTypes, eq(userDietTypes.dietTypeId, dietTypes.id))

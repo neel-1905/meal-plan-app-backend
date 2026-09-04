@@ -5,6 +5,8 @@ export const allergens = pgTable('allergens', {
 
   name: text('name').notNull(),
 
+  description: text('description'),
+
   code: text('code').notNull().unique(),
 
   createdAt: timestamp('created_at').notNull().defaultNow(),
