@@ -21,3 +21,6 @@ export * from './user-disliked-foods.schema.js';
 export * from './recipe-diet-types.schema.js';
 export * from './recipe-allergens.schema.js';
 export * from './recipe-foods.schema.js';
+
+export * from './collections.schema.js';
+export * from './collection-recipes.schema.js';

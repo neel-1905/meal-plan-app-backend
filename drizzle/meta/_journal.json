@@ -99,6 +99,13 @@
       "when": 1788616537695,
       "tag": "0013_unique_date_slot_meal_plan",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788630397329,
+      "tag": "0014_add_collections_table",
+      "breakpoints": true
     }
   ]
 }
