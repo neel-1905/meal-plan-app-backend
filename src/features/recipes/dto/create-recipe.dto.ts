@@ -13,6 +13,7 @@ import { Type } from 'class-transformer';
 
 import { CreateRecipeIngredientDto } from './create-recipe-ingredient.dto.js';
 import { CreateRecipeInstructionDto } from './create-recipe-instruction.dto.js';
+import { CreateRecipeNutritionDto } from './create-recipe-nutrition.dto.js';
 
 export class CreateRecipeDto {
   @IsString()
@@ -61,4 +62,9 @@ export class CreateRecipeDto {
   @IsArray()
   @IsUUID('4', { each: true })
   foodIds: string[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CreateRecipeNutritionDto)
+  nutrition?: CreateRecipeNutritionDto;
 }

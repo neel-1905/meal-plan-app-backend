@@ -1,73 +1,71 @@
+import { Type } from 'class-transformer';
 import {
+  ArrayNotEmpty,
   IsArray,
-  IsInt,
+  IsNumberString,
   IsOptional,
-  IsString,
-  IsUrl,
   IsUUID,
-  Min,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
-
 import { CreateRecipeIngredientDto } from './create-recipe-ingredient.dto.js';
 import { CreateRecipeInstructionDto } from './create-recipe-instruction.dto.js';
-import { CreateRecipeNutritionDto } from './create-recipe-nutrition.dto.js';
 
-export class UpdateRecipeDto {
+export class CreateRecipeNutritionDto {
   @IsOptional()
-  @IsString()
-  name?: string;
-
-  @IsOptional()
-  @IsString()
-  description?: string;
+  @IsNumberString()
+  calories?: string;
 
   @IsOptional()
-  @IsUrl()
-  image?: string;
+  @IsNumberString()
+  protein?: string;
 
   @IsOptional()
-  @IsInt()
-  @Min(1)
-  cookingTime?: number;
+  @IsNumberString()
+  carbohydrates?: string;
 
   @IsOptional()
-  @IsInt()
-  @Min(1)
-  servings?: number;
+  @IsNumberString()
+  fat?: string;
 
   @IsOptional()
+  @IsNumberString()
+  fiber?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  sugar?: string;
+
+  @IsOptional()
+  @IsNumberString()
+  sodium?: string;
+
   @IsArray()
+  @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => CreateRecipeIngredientDto)
-  ingredients?: CreateRecipeIngredientDto[];
+  ingredients: CreateRecipeIngredientDto[];
 
-  @IsOptional()
   @IsArray()
+  @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => CreateRecipeInstructionDto)
-  instructions?: CreateRecipeInstructionDto[];
+  instructions: CreateRecipeInstructionDto[];
 
-  @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })
-  categoryIds?: string[];
+  categoryIds: string[];
 
-  @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })
-  dietTypeIds?: string[];
+  dietTypeIds: string[];
 
-  @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })
-  allergenIds?: string[];
+  allergenIds: string[];
 
-  @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })
-  foodIds?: string[];
+  foodIds: string[];
 
   @IsOptional()
   @ValidateNested()

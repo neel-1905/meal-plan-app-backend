@@ -1,6 +1,5 @@
 import {
-  BadRequestException,
-  ForbiddenException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,7 +7,6 @@ import {
 import { and, asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm';
 
 import { db } from '../../lib/db.js';
-
 import {
   allergens,
   dietTypes,
@@ -22,6 +20,7 @@ import {
   recipeIngredients,
   recipeInstructionIngredients,
   recipeInstructions,
+  recipeNutrition,
   recipes,
 } from '../../db/schema/index.js';
 
@@ -31,25 +30,19 @@ import { UpdateRecipeDto } from './dto/update-recipe.dto.js';
 
 @Injectable()
 export class RecipesService {
-  /*
-   * ============================================================
-   * CREATE RECIPE
-   * ============================================================
-   */
+  // ============================================================
+  // CREATE
+  // ============================================================
 
   async createRecipe(userId: string, dto: CreateRecipeDto) {
     return db.transaction(async (tx) => {
-      /*
-       * --------------------------------------------------------
-       * 1. Validate ingredient IDs
-       * --------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Validate ingredient IDs
+      // --------------------------------------------------------
 
-      const ingredientIds = [
-        ...new Set(
-          dto.ingredients.map((ingredient) => ingredient.ingredientId),
-        ),
-      ];
+      const ingredientIds = dto.ingredients.map(
+        (ingredient) => ingredient.ingredientId,
+      );
 
       const existingIngredients = await tx
         .select({
@@ -59,140 +52,106 @@ export class RecipesService {
         .where(inArray(ingredients.id, ingredientIds));
 
       if (existingIngredients.length !== ingredientIds.length) {
-        throw new BadRequestException('One or more ingredient IDs are invalid');
+        throw new NotFoundException('One or more ingredients were not found');
       }
 
-      /*
-       * --------------------------------------------------------
-       * 2. Validate category IDs
-       * --------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Validate category IDs
+      // --------------------------------------------------------
 
-      const categoryIds = [...new Set(dto.categoryIds)];
-
-      if (categoryIds.length > 0) {
+      if (dto.categoryIds.length > 0) {
         const existingCategories = await tx
           .select({
             id: recipeCategories.id,
           })
           .from(recipeCategories)
-          .where(inArray(recipeCategories.id, categoryIds));
+          .where(inArray(recipeCategories.id, dto.categoryIds));
 
-        if (existingCategories.length !== categoryIds.length) {
-          throw new BadRequestException('One or more category IDs are invalid');
+        if (existingCategories.length !== dto.categoryIds.length) {
+          throw new NotFoundException('One or more categories were not found');
         }
       }
 
-      /*
-       * --------------------------------------------------------
-       * 3. Validate diet type IDs
-       * --------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Validate diet type IDs
+      // --------------------------------------------------------
 
-      const dietTypeIds = [...new Set(dto.dietTypeIds)];
-
-      if (dietTypeIds.length > 0) {
+      if (dto.dietTypeIds.length > 0) {
         const existingDietTypes = await tx
           .select({
             id: dietTypes.id,
           })
           .from(dietTypes)
-          .where(inArray(dietTypes.id, dietTypeIds));
+          .where(inArray(dietTypes.id, dto.dietTypeIds));
 
-        if (existingDietTypes.length !== dietTypeIds.length) {
-          throw new BadRequestException(
-            'One or more diet type IDs are invalid',
-          );
+        if (existingDietTypes.length !== dto.dietTypeIds.length) {
+          throw new NotFoundException('One or more diet types were not found');
         }
       }
 
-      /*
-       * --------------------------------------------------------
-       * 4. Validate allergen IDs
-       * --------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Validate allergen IDs
+      // --------------------------------------------------------
 
-      const allergenIds = [...new Set(dto.allergenIds)];
-
-      if (allergenIds.length > 0) {
+      if (dto.allergenIds.length > 0) {
         const existingAllergens = await tx
           .select({
             id: allergens.id,
           })
           .from(allergens)
-          .where(inArray(allergens.id, allergenIds));
+          .where(inArray(allergens.id, dto.allergenIds));
 
-        if (existingAllergens.length !== allergenIds.length) {
-          throw new BadRequestException('One or more allergen IDs are invalid');
+        if (existingAllergens.length !== dto.allergenIds.length) {
+          throw new NotFoundException('One or more allergens were not found');
         }
       }
 
-      /*
-       * --------------------------------------------------------
-       * 5. Validate food IDs
-       * --------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Validate food IDs
+      // --------------------------------------------------------
 
-      const foodIds = [...new Set(dto.foodIds)];
-
-      if (foodIds.length > 0) {
+      if (dto.foodIds.length > 0) {
         const existingFoods = await tx
           .select({
             id: foods.id,
           })
           .from(foods)
-          .where(inArray(foods.id, foodIds));
+          .where(inArray(foods.id, dto.foodIds));
 
-        if (existingFoods.length !== foodIds.length) {
-          throw new BadRequestException('One or more food IDs are invalid');
+        if (existingFoods.length !== dto.foodIds.length) {
+          throw new NotFoundException('One or more foods were not found');
         }
       }
 
-      /*
-       * --------------------------------------------------------
-       * 6. Validate instruction step numbers
-       * --------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Validate instruction step numbers
+      // --------------------------------------------------------
 
       const stepNumbers = dto.instructions.map(
         (instruction) => instruction.stepNumber,
       );
 
       if (new Set(stepNumbers).size !== stepNumbers.length) {
-        throw new BadRequestException(
-          'Instruction step numbers must be unique',
-        );
+        throw new ConflictException('Instruction step numbers must be unique');
       }
 
-      /*
-       * --------------------------------------------------------
-       * 7. Validate ingredient indexes
-       * --------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Validate instruction ingredient indexes
+      // --------------------------------------------------------
 
       for (const instruction of dto.instructions) {
-        const indexes = instruction.ingredientIndexes;
-
-        if (new Set(indexes).size !== indexes.length) {
-          throw new BadRequestException(
-            `Duplicate ingredient index found in step ${instruction.stepNumber}`,
-          );
-        }
-
-        for (const index of indexes) {
+        for (const index of instruction.ingredientIndexes) {
           if (index < 0 || index >= dto.ingredients.length) {
-            throw new BadRequestException(
-              `Invalid ingredient index ${index} in step ${instruction.stepNumber}`,
+            throw new ConflictException(
+              `Invalid ingredient index ${index} in instruction step ${instruction.stepNumber}`,
             );
           }
         }
       }
 
-      /*
-       * --------------------------------------------------------
-       * 8. Create recipe
-       * --------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Create recipe
+      // --------------------------------------------------------
 
       const [recipe] = await tx
         .insert(recipes)
@@ -206,13 +165,11 @@ export class RecipesService {
         })
         .returning();
 
-      /*
-       * --------------------------------------------------------
-       * 9. Create recipe ingredients
-       * --------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Create recipe ingredients
+      // --------------------------------------------------------
 
-      const createdIngredients = await tx
+      const createdRecipeIngredients = await tx
         .insert(recipeIngredients)
         .values(
           dto.ingredients.map((ingredient) => ({
@@ -224,13 +181,13 @@ export class RecipesService {
             isOptional: ingredient.isOptional,
           })),
         )
-        .returning();
+        .returning({
+          id: recipeIngredients.id,
+        });
 
-      /*
-       * --------------------------------------------------------
-       * 10. Create recipe instructions
-       * --------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Create instructions
+      // --------------------------------------------------------
 
       const createdInstructions = await tx
         .insert(recipeInstructions)
@@ -241,49 +198,37 @@ export class RecipesService {
             instruction: instruction.instruction,
           })),
         )
-        .returning();
+        .returning({
+          id: recipeInstructions.id,
+          stepNumber: recipeInstructions.stepNumber,
+        });
 
-      /*
-       * --------------------------------------------------------
-       * 11. Map instructions to ingredients
-       * --------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Map instruction -> ingredients
+      // --------------------------------------------------------
 
-      const instructionByStepNumber = new Map(
-        createdInstructions.map((instruction) => [
-          instruction.stepNumber,
-          instruction,
-        ]),
-      );
+      const instructionIngredientMappings = [];
 
-      const instructionIngredientMappings = dto.instructions.flatMap(
-        (instruction) => {
-          const createdInstruction = instructionByStepNumber.get(
-            instruction.stepNumber,
+      for (const instruction of dto.instructions) {
+        const createdInstruction = createdInstructions.find(
+          (item) => item.stepNumber === instruction.stepNumber,
+        );
+
+        if (!createdInstruction) {
+          throw new ConflictException(
+            `Could not create instruction step ${instruction.stepNumber}`,
           );
+        }
 
-          if (!createdInstruction) {
-            throw new BadRequestException(
-              `Instruction step ${instruction.stepNumber} could not be created`,
-            );
-          }
+        for (const ingredientIndex of instruction.ingredientIndexes) {
+          const recipeIngredient = createdRecipeIngredients[ingredientIndex];
 
-          return instruction.ingredientIndexes.map((ingredientIndex) => {
-            const createdIngredient = createdIngredients[ingredientIndex];
-
-            if (!createdIngredient) {
-              throw new BadRequestException(
-                `Invalid ingredient index ${ingredientIndex}`,
-              );
-            }
-
-            return {
-              instructionId: createdInstruction.id,
-              recipeIngredientId: createdIngredient.id,
-            };
+          instructionIngredientMappings.push({
+            instructionId: createdInstruction.id,
+            recipeIngredientId: recipeIngredient.id,
           });
-        },
-      );
+        }
+      }
 
       if (instructionIngredientMappings.length > 0) {
         await tx
@@ -291,98 +236,85 @@ export class RecipesService {
           .values(instructionIngredientMappings);
       }
 
-      /*
-       * --------------------------------------------------------
-       * 12. Map recipe to categories
-       * --------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Categories
+      // --------------------------------------------------------
 
-      if (categoryIds.length > 0) {
+      if (dto.categoryIds.length > 0) {
         await tx.insert(recipeCategoriesMap).values(
-          categoryIds.map((categoryId) => ({
+          dto.categoryIds.map((categoryId) => ({
             recipeId: recipe.id,
             categoryId,
           })),
         );
       }
 
-      /*
-       * --------------------------------------------------------
-       * 13. Map recipe to diet types
-       * --------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Diet types
+      // --------------------------------------------------------
 
-      if (dietTypeIds.length > 0) {
+      if (dto.dietTypeIds.length > 0) {
         await tx.insert(recipeDietTypes).values(
-          dietTypeIds.map((dietTypeId) => ({
+          dto.dietTypeIds.map((dietTypeId) => ({
             recipeId: recipe.id,
             dietTypeId,
           })),
         );
       }
 
-      /*
-       * --------------------------------------------------------
-       * 14. Map recipe to allergens
-       * --------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Allergens
+      // --------------------------------------------------------
 
-      if (allergenIds.length > 0) {
+      if (dto.allergenIds.length > 0) {
         await tx.insert(recipeAllergens).values(
-          allergenIds.map((allergenId) => ({
+          dto.allergenIds.map((allergenId) => ({
             recipeId: recipe.id,
             allergenId,
           })),
         );
       }
 
-      /*
-       * --------------------------------------------------------
-       * 15. Map recipe to foods
-       * --------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Foods
+      // --------------------------------------------------------
 
-      if (foodIds.length > 0) {
+      if (dto.foodIds.length > 0) {
         await tx.insert(recipeFoods).values(
-          foodIds.map((foodId) => ({
+          dto.foodIds.map((foodId) => ({
             recipeId: recipe.id,
             foodId,
           })),
         );
       }
 
-      /*
-       * --------------------------------------------------------
-       * 16. Return created recipe
-       * --------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Nutrition
+      // --------------------------------------------------------
 
-      return {
-        recipe,
-        ingredients: createdIngredients,
-        instructions: createdInstructions,
-        categoryIds,
-        dietTypeIds,
-        allergenIds,
-        foodIds,
-      };
+      if (dto.nutrition) {
+        await tx.insert(recipeNutrition).values({
+          recipeId: recipe.id,
+          calories: dto.nutrition.calories,
+          protein: dto.nutrition.protein,
+          carbohydrates: dto.nutrition.carbohydrates,
+          fat: dto.nutrition.fat,
+          fiber: dto.nutrition.fiber,
+          sugar: dto.nutrition.sugar,
+          sodium: dto.nutrition.sodium,
+        });
+      }
+
+      return this.getRecipeById(recipe.id);
     });
   }
 
-  /*
-   * ============================================================
-   * GET RECIPE BY ID
-   * ============================================================
-   */
+  // ============================================================
+  // GET ONE
+  // ============================================================
 
   async getRecipeById(recipeId: string) {
-    /*
-     * --------------------------------------------------------
-     * Get recipe
-     * --------------------------------------------------------
-     */
-
-    const recipeRows = await db
+    const [recipe] = await db
       .select({
         id: recipes.id,
         name: recipes.name,
@@ -398,23 +330,19 @@ export class RecipesService {
       .where(eq(recipes.id, recipeId))
       .limit(1);
 
-    if (recipeRows.length === 0) {
+    if (!recipe) {
       throw new NotFoundException('Recipe not found');
     }
 
-    const recipeData = recipeRows[0];
-
-    /*
-     * --------------------------------------------------------
-     * Get ingredients
-     * --------------------------------------------------------
-     */
+    // ----------------------------------------------------------
+    // Ingredients
+    // ----------------------------------------------------------
 
     const recipeIngredientRows = await db
       .select({
         id: recipeIngredients.id,
         ingredientId: ingredients.id,
-        name: ingredients.name,
+        ingredientName: ingredients.name,
         quantity: recipeIngredients.quantity,
         unit: recipeIngredients.unit,
         preparation: recipeIngredients.preparation,
@@ -425,52 +353,76 @@ export class RecipesService {
         ingredients,
         eq(recipeIngredients.ingredientId, ingredients.id),
       )
-      .where(eq(recipeIngredients.recipeId, recipeId))
-      .orderBy(asc(recipeIngredients.createdAt));
+      .where(eq(recipeIngredients.recipeId, recipeId));
 
-    /*
-     * --------------------------------------------------------
-     * Get instructions + their ingredients
-     * --------------------------------------------------------
-     */
+    // ----------------------------------------------------------
+    // Instructions
+    // ----------------------------------------------------------
 
     const instructionRows = await db
       .select({
         id: recipeInstructions.id,
         stepNumber: recipeInstructions.stepNumber,
         instruction: recipeInstructions.instruction,
-
-        ingredientId: recipeIngredients.id,
-
-        ingredientName: ingredients.name,
-
-        ingredientQuantity: recipeIngredients.quantity,
-
-        ingredientUnit: recipeIngredients.unit,
+        recipeIngredientId: recipeInstructionIngredients.recipeIngredientId,
       })
       .from(recipeInstructions)
       .leftJoin(
         recipeInstructionIngredients,
-        eq(recipeInstructionIngredients.instructionId, recipeInstructions.id),
+        eq(recipeInstructions.id, recipeInstructionIngredients.instructionId),
       )
-      .leftJoin(
-        recipeIngredients,
-        eq(
-          recipeInstructionIngredients.recipeIngredientId,
-          recipeIngredients.id,
-        ),
-      )
-      .leftJoin(ingredients, eq(recipeIngredients.ingredientId, ingredients.id))
       .where(eq(recipeInstructions.recipeId, recipeId))
       .orderBy(asc(recipeInstructions.stepNumber));
 
-    /*
-     * --------------------------------------------------------
-     * Get categories
-     * --------------------------------------------------------
-     */
+    const instructions = instructionRows.reduce<
+      {
+        id: string;
+        stepNumber: number;
+        instruction: string;
+        ingredients: {
+          id: string;
+          name: string;
+          quantity: string;
+          unit: string;
+        }[];
+      }[]
+    >((result, row) => {
+      let instruction = result.find((item) => item.id === row.id);
 
-    const categoryRows = await db
+      if (!instruction) {
+        instruction = {
+          id: row.id,
+          stepNumber: row.stepNumber,
+          instruction: row.instruction,
+          ingredients: [],
+        };
+
+        result.push(instruction);
+      }
+
+      if (row.recipeIngredientId) {
+        const ingredient = recipeIngredientRows.find(
+          (item) => item.id === row.recipeIngredientId,
+        );
+
+        if (ingredient) {
+          instruction.ingredients.push({
+            id: ingredient.id,
+            name: ingredient.ingredientName,
+            quantity: ingredient.quantity,
+            unit: ingredient.unit,
+          });
+        }
+      }
+
+      return result;
+    }, []);
+
+    // ----------------------------------------------------------
+    // Categories
+    // ----------------------------------------------------------
+
+    const categories = await db
       .select({
         id: recipeCategories.id,
         code: recipeCategories.code,
@@ -485,13 +437,11 @@ export class RecipesService {
       .where(eq(recipeCategoriesMap.recipeId, recipeId))
       .orderBy(asc(recipeCategories.name));
 
-    /*
-     * --------------------------------------------------------
-     * Get diet types
-     * --------------------------------------------------------
-     */
+    // ----------------------------------------------------------
+    // Diet types
+    // ----------------------------------------------------------
 
-    const dietTypeRows = await db
+    const dietTypesResult = await db
       .select({
         id: dietTypes.id,
         code: dietTypes.code,
@@ -503,13 +453,11 @@ export class RecipesService {
       .where(eq(recipeDietTypes.recipeId, recipeId))
       .orderBy(asc(dietTypes.name));
 
-    /*
-     * --------------------------------------------------------
-     * Get allergens
-     * --------------------------------------------------------
-     */
+    // ----------------------------------------------------------
+    // Allergens
+    // ----------------------------------------------------------
 
-    const allergenRows = await db
+    const allergensResult = await db
       .select({
         id: allergens.id,
         code: allergens.code,
@@ -521,13 +469,11 @@ export class RecipesService {
       .where(eq(recipeAllergens.recipeId, recipeId))
       .orderBy(asc(allergens.name));
 
-    /*
-     * --------------------------------------------------------
-     * Get foods
-     * --------------------------------------------------------
-     */
+    // ----------------------------------------------------------
+    // Foods
+    // ----------------------------------------------------------
 
-    const foodRows = await db
+    const foodsResult = await db
       .select({
         id: foods.id,
         code: foods.code,
@@ -539,75 +485,50 @@ export class RecipesService {
       .where(eq(recipeFoods.recipeId, recipeId))
       .orderBy(asc(foods.name));
 
-    /*
-     * --------------------------------------------------------
-     * Group instruction ingredients
-     * --------------------------------------------------------
-     */
+    // ----------------------------------------------------------
+    // Nutrition
+    // ----------------------------------------------------------
 
-    const instructionsMap = new Map<
-      string,
-      {
-        id: string;
-        stepNumber: number;
-        instruction: string;
-        ingredients: {
-          id: string;
-          name: string;
-          quantity: string;
-          unit: string;
-        }[];
-      }
-    >();
+    const [nutrition] = await db
+      .select({
+        calories: recipeNutrition.calories,
+        protein: recipeNutrition.protein,
+        carbohydrates: recipeNutrition.carbohydrates,
+        fat: recipeNutrition.fat,
+        fiber: recipeNutrition.fiber,
+        sugar: recipeNutrition.sugar,
+        sodium: recipeNutrition.sodium,
+      })
+      .from(recipeNutrition)
+      .where(eq(recipeNutrition.recipeId, recipeId))
+      .limit(1);
 
-    for (const row of instructionRows) {
-      if (!instructionsMap.has(row.id)) {
-        instructionsMap.set(row.id, {
-          id: row.id,
-          stepNumber: row.stepNumber,
-          instruction: row.instruction,
-          ingredients: [],
-        });
-      }
-
-      if (row.ingredientId) {
-        instructionsMap.get(row.id)!.ingredients.push({
-          id: row.ingredientId,
-          name: row.ingredientName!,
-          quantity: row.ingredientQuantity!,
-          unit: row.ingredientUnit!,
-        });
-      }
-    }
-
-    /*
-     * --------------------------------------------------------
-     * Return complete recipe
-     * --------------------------------------------------------
-     */
+    // ----------------------------------------------------------
+    // Final response
+    // ----------------------------------------------------------
 
     return {
-      ...recipeData,
+      ...recipe,
+
+      nutrition: nutrition ?? null,
 
       ingredients: recipeIngredientRows,
 
-      instructions: Array.from(instructionsMap.values()),
+      instructions,
 
-      categories: categoryRows,
+      categories,
 
-      dietTypes: dietTypeRows,
+      dietTypes: dietTypesResult,
 
-      allergens: allergenRows,
+      allergens: allergensResult,
 
-      foods: foodRows,
+      foods: foodsResult,
     };
   }
 
-  /*
-   * ============================================================
-   * GET RECIPES
-   * ============================================================
-   */
+  // ============================================================
+  // GET MANY
+  // ============================================================
 
   async getRecipes(query: RecipeQueryDto) {
     const {
@@ -634,22 +555,26 @@ export class RecipesService {
     if (categoryId) {
       conditions.push(
         sql`EXISTS (
-           SELECT 1
-           FROM ${recipeCategoriesMap}
-           WHERE ${recipeCategoriesMap.recipeId} = ${recipes.id}
-           AND ${recipeCategoriesMap.categoryId} = ${categoryId}
-         )`,
+          SELECT 1
+          FROM ${recipeCategoriesMap}
+          WHERE ${recipeCategoriesMap.recipeId}
+            = ${recipes.id}
+          AND ${recipeCategoriesMap.categoryId}
+            = ${categoryId}
+        )`,
       );
     }
 
     if (dietTypeId) {
       conditions.push(
         sql`EXISTS (
-           SELECT 1
-           FROM ${recipeDietTypes}
-           WHERE ${recipeDietTypes.recipeId} = ${recipes.id}
-           AND ${recipeDietTypes.dietTypeId} = ${dietTypeId}
-         )`,
+          SELECT 1
+          FROM ${recipeDietTypes}
+          WHERE ${recipeDietTypes.recipeId}
+            = ${recipes.id}
+          AND ${recipeDietTypes.dietTypeId}
+            = ${dietTypeId}
+        )`,
       );
     }
 
@@ -711,291 +636,104 @@ export class RecipesService {
     };
   }
 
-  /*
-   * ============================================================
-   * UPDATE RECIPE
-   * ============================================================
-   */
+  // ============================================================
+  // UPDATE
+  // ============================================================
 
   async updateRecipe(userId: string, recipeId: string, dto: UpdateRecipeDto) {
-    /*
-     * We return the ID from the transaction,
-     * then fetch the complete recipe afterwards.
-     *
-     * This avoids calling getRecipeById()
-     * using the normal db connection while
-     * the transaction is still running.
-     */
+    await this.assertRecipeOwnership(userId, recipeId);
 
-    const updatedRecipeId = await db.transaction(async (tx) => {
-      /*
-       * ------------------------------------------------------
-       * 1. Find recipe
-       * ------------------------------------------------------
-       */
+    await db.transaction(async (tx) => {
+      // --------------------------------------------------------
+      // Update basic recipe fields
+      // --------------------------------------------------------
 
-      const [existingRecipe] = await tx
-        .select({
-          id: recipes.id,
-          createdBy: recipes.createdBy,
-        })
-        .from(recipes)
-        .where(eq(recipes.id, recipeId))
-        .limit(1);
+      const basicUpdates = {
+        ...(dto.name !== undefined && {
+          name: dto.name,
+        }),
 
-      if (!existingRecipe) {
-        throw new NotFoundException('Recipe not found');
-      }
+        ...(dto.description !== undefined && {
+          description: dto.description,
+        }),
 
-      /*
-       * ------------------------------------------------------
-       * 2. Ownership check
-       * ------------------------------------------------------
-       */
+        ...(dto.image !== undefined && {
+          image: dto.image,
+        }),
 
-      if (existingRecipe.createdBy !== userId) {
-        throw new ForbiddenException(
-          'You do not have permission to update this recipe',
+        ...(dto.cookingTime !== undefined && {
+          cookingTime: dto.cookingTime,
+        }),
+
+        ...(dto.servings !== undefined && {
+          servings: dto.servings,
+        }),
+
+        updatedAt: new Date(),
+      };
+
+      await tx
+        .update(recipes)
+        .set(basicUpdates)
+        .where(eq(recipes.id, recipeId));
+
+      // --------------------------------------------------------
+      // Validate + replace ingredients/instructions
+      // --------------------------------------------------------
+
+      if (dto.ingredients !== undefined || dto.instructions !== undefined) {
+        if (dto.ingredients === undefined || dto.instructions === undefined) {
+          throw new ConflictException(
+            'Ingredients and instructions must be provided together',
+          );
+        }
+
+        const ingredientIds = dto.ingredients.map(
+          (ingredient) => ingredient.ingredientId,
         );
-      }
 
-      /*
-       * ------------------------------------------------------
-       * 3. Validate diet types
-       * ------------------------------------------------------
-       */
+        const existingIngredients = await tx
+          .select({
+            id: ingredients.id,
+          })
+          .from(ingredients)
+          .where(inArray(ingredients.id, ingredientIds));
 
-      if (dto.dietTypeIds !== undefined) {
-        const uniqueDietTypeIds = [...new Set(dto.dietTypeIds)];
-
-        if (uniqueDietTypeIds.length !== dto.dietTypeIds.length) {
-          throw new BadRequestException(
-            'Duplicate diet type IDs are not allowed',
-          );
+        if (existingIngredients.length !== ingredientIds.length) {
+          throw new NotFoundException('One or more ingredients were not found');
         }
 
-        if (uniqueDietTypeIds.length > 0) {
-          const existingDietTypes = await tx
-            .select({
-              id: dietTypes.id,
-            })
-            .from(dietTypes)
-            .where(inArray(dietTypes.id, uniqueDietTypeIds));
-
-          if (existingDietTypes.length !== uniqueDietTypeIds.length) {
-            throw new BadRequestException(
-              'One or more diet types do not exist',
-            );
-          }
-        }
-      }
-
-      /*
-       * ------------------------------------------------------
-       * 4. Validate allergens
-       * ------------------------------------------------------
-       */
-
-      if (dto.allergenIds !== undefined) {
-        const uniqueAllergenIds = [...new Set(dto.allergenIds)];
-
-        if (uniqueAllergenIds.length !== dto.allergenIds.length) {
-          throw new BadRequestException(
-            'Duplicate allergen IDs are not allowed',
-          );
-        }
-
-        if (uniqueAllergenIds.length > 0) {
-          const existingAllergens = await tx
-            .select({
-              id: allergens.id,
-            })
-            .from(allergens)
-            .where(inArray(allergens.id, uniqueAllergenIds));
-
-          if (existingAllergens.length !== uniqueAllergenIds.length) {
-            throw new BadRequestException('One or more allergens do not exist');
-          }
-        }
-      }
-
-      /*
-       * ------------------------------------------------------
-       * 5. Validate foods
-       * ------------------------------------------------------
-       */
-
-      if (dto.foodIds !== undefined) {
-        const uniqueFoodIds = [...new Set(dto.foodIds)];
-
-        if (uniqueFoodIds.length !== dto.foodIds.length) {
-          throw new BadRequestException('Duplicate food IDs are not allowed');
-        }
-
-        if (uniqueFoodIds.length > 0) {
-          const existingFoods = await tx
-            .select({
-              id: foods.id,
-            })
-            .from(foods)
-            .where(inArray(foods.id, uniqueFoodIds));
-
-          if (existingFoods.length !== uniqueFoodIds.length) {
-            throw new BadRequestException('One or more foods do not exist');
-          }
-        }
-      }
-
-      /*
-       * ------------------------------------------------------
-       * 6. Validate categories
-       * ------------------------------------------------------
-       */
-
-      if (dto.categoryIds !== undefined) {
-        const uniqueCategoryIds = [...new Set(dto.categoryIds)];
-
-        if (uniqueCategoryIds.length !== dto.categoryIds.length) {
-          throw new BadRequestException(
-            'Duplicate category IDs are not allowed',
-          );
-        }
-
-        if (uniqueCategoryIds.length > 0) {
-          const existingCategories = await tx
-            .select({
-              id: recipeCategories.id,
-            })
-            .from(recipeCategories)
-            .where(inArray(recipeCategories.id, uniqueCategoryIds));
-
-          if (existingCategories.length !== uniqueCategoryIds.length) {
-            throw new BadRequestException(
-              'One or more categories do not exist',
-            );
-          }
-        }
-      }
-
-      /*
-       * ------------------------------------------------------
-       * 7. Validate ingredients
-       * ------------------------------------------------------
-       */
-
-      const ingredientsDto = dto.ingredients;
-
-      const instructionsDto = dto.instructions;
-
-      if (ingredientsDto !== undefined) {
-        const ingredientIds = [
-          ...new Set(
-            ingredientsDto.map((ingredient) => ingredient.ingredientId),
-          ),
-        ];
-
-        if (ingredientIds.length !== ingredientsDto.length) {
-          throw new BadRequestException(
-            'The same ingredient cannot be added more than once',
-          );
-        }
-
-        if (ingredientIds.length > 0) {
-          const existingIngredients = await tx
-            .select({
-              id: ingredients.id,
-            })
-            .from(ingredients)
-            .where(inArray(ingredients.id, ingredientIds));
-
-          if (existingIngredients.length !== ingredientIds.length) {
-            throw new BadRequestException(
-              'One or more ingredients do not exist',
-            );
-          }
-        }
-      }
-
-      /*
-       * ------------------------------------------------------
-       * 8. Validate instructions
-       * ------------------------------------------------------
-       */
-
-      if (instructionsDto !== undefined) {
-        const stepNumbers = instructionsDto.map(
+        const stepNumbers = dto.instructions.map(
           (instruction) => instruction.stepNumber,
         );
 
         if (new Set(stepNumbers).size !== stepNumbers.length) {
-          throw new BadRequestException(
+          throw new ConflictException(
             'Instruction step numbers must be unique',
           );
         }
 
-        const ingredientCount = ingredientsDto?.length ?? 0;
-
-        for (const instruction of instructionsDto) {
-          for (const ingredientIndex of instruction.ingredientIndexes) {
-            if (ingredientIndex < 0 || ingredientIndex >= ingredientCount) {
-              throw new BadRequestException(
-                `Invalid ingredient index ${ingredientIndex} in instruction step ${instruction.stepNumber}`,
+        for (const instruction of dto.instructions) {
+          for (const index of instruction.ingredientIndexes) {
+            if (index < 0 || index >= dto.ingredients.length) {
+              throw new ConflictException(
+                `Invalid ingredient index ${index} in instruction step ${instruction.stepNumber}`,
               );
             }
           }
         }
-      }
 
-      /*
-       * ------------------------------------------------------
-       * 9. Update basic recipe fields
-       * ------------------------------------------------------
-       */
-
-      const updateData: {
-        name?: string;
-        description?: string;
-        image?: string;
-        cookingTime?: number;
-        servings?: number;
-        updatedAt: Date;
-      } = {
-        updatedAt: new Date(),
-      };
-
-      if (dto.name !== undefined) {
-        updateData.name = dto.name;
-      }
-
-      if (dto.description !== undefined) {
-        updateData.description = dto.description;
-      }
-
-      if (dto.image !== undefined) {
-        updateData.image = dto.image;
-      }
-
-      if (dto.cookingTime !== undefined) {
-        updateData.cookingTime = dto.cookingTime;
-      }
-
-      if (dto.servings !== undefined) {
-        updateData.servings = dto.servings;
-      }
-
-      await tx.update(recipes).set(updateData).where(eq(recipes.id, recipeId));
-
-      /*
-       * ------------------------------------------------------
-       * 10. Replace ingredients + instructions
-       * ------------------------------------------------------
-       */
-
-      if (ingredientsDto !== undefined || instructionsDto !== undefined) {
-        /*
-         * Because instructions reference
-         * recipeIngredients, recreate both.
-         */
+        await tx.delete(recipeInstructionIngredients).where(
+          inArray(
+            recipeInstructionIngredients.instructionId,
+            tx
+              .select({
+                id: recipeInstructions.id,
+              })
+              .from(recipeInstructions)
+              .where(eq(recipeInstructions.recipeId, recipeId)),
+          ),
+        );
 
         await tx
           .delete(recipeInstructions)
@@ -1005,91 +743,83 @@ export class RecipesService {
           .delete(recipeIngredients)
           .where(eq(recipeIngredients.recipeId, recipeId));
 
-        let updatedIngredients: (typeof recipeIngredients.$inferSelect)[] = [];
+        const createdRecipeIngredients = await tx
+          .insert(recipeIngredients)
+          .values(
+            dto.ingredients.map((ingredient) => ({
+              recipeId,
+              ingredientId: ingredient.ingredientId,
+              quantity: ingredient.quantity,
+              unit: ingredient.unit,
+              preparation: ingredient.preparation,
+              isOptional: ingredient.isOptional,
+            })),
+          )
+          .returning({
+            id: recipeIngredients.id,
+          });
 
-        /*
-         * Create ingredients
-         */
+        const createdInstructions = await tx
+          .insert(recipeInstructions)
+          .values(
+            dto.instructions.map((instruction) => ({
+              recipeId,
+              stepNumber: instruction.stepNumber,
+              instruction: instruction.instruction,
+            })),
+          )
+          .returning({
+            id: recipeInstructions.id,
+            stepNumber: recipeInstructions.stepNumber,
+          });
 
-        if (ingredientsDto !== undefined && ingredientsDto.length > 0) {
-          updatedIngredients = await tx
-            .insert(recipeIngredients)
-            .values(
-              ingredientsDto.map((ingredient) => ({
-                recipeId,
-                ingredientId: ingredient.ingredientId,
-                quantity: ingredient.quantity,
-                unit: ingredient.unit,
-                preparation: ingredient.preparation,
-                isOptional: ingredient.isOptional,
-              })),
-            )
-            .returning();
+        const mappings = [];
+
+        for (const instruction of dto.instructions) {
+          const createdInstruction = createdInstructions.find(
+            (item) => item.stepNumber === instruction.stepNumber,
+          );
+
+          if (!createdInstruction) {
+            throw new ConflictException(
+              `Could not create instruction step ${instruction.stepNumber}`,
+            );
+          }
+
+          for (const ingredientIndex of instruction.ingredientIndexes) {
+            mappings.push({
+              instructionId: createdInstruction.id,
+
+              recipeIngredientId: createdRecipeIngredients[ingredientIndex].id,
+            });
+          }
         }
 
-        /*
-         * Create instructions
-         */
-
-        if (instructionsDto !== undefined && instructionsDto.length > 0) {
-          const createdInstructions = await tx
-            .insert(recipeInstructions)
-            .values(
-              instructionsDto.map((instruction) => ({
-                recipeId,
-                stepNumber: instruction.stepNumber,
-                instruction: instruction.instruction,
-              })),
-            )
-            .returning();
-
-          /*
-           * Map instruction ingredients
-           */
-
-          const mappings = [];
-
-          for (let i = 0; i < instructionsDto.length; i++) {
-            const instructionDto = instructionsDto[i];
-
-            const createdInstruction = createdInstructions[i];
-
-            if (!createdInstruction) {
-              throw new BadRequestException(
-                'Failed to create recipe instruction',
-              );
-            }
-
-            for (const ingredientIndex of instructionDto.ingredientIndexes) {
-              const createdIngredient = updatedIngredients[ingredientIndex];
-
-              if (!createdIngredient) {
-                throw new BadRequestException(
-                  `Invalid ingredient index ${ingredientIndex}`,
-                );
-              }
-
-              mappings.push({
-                instructionId: createdInstruction.id,
-
-                recipeIngredientId: createdIngredient.id,
-              });
-            }
-          }
-
-          if (mappings.length > 0) {
-            await tx.insert(recipeInstructionIngredients).values(mappings);
-          }
+        if (mappings.length > 0) {
+          await tx.insert(recipeInstructionIngredients).values(mappings);
         }
       }
 
-      /*
-       * ------------------------------------------------------
-       * 11. Replace categories
-       * ------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Categories
+      // --------------------------------------------------------
 
       if (dto.categoryIds !== undefined) {
+        if (dto.categoryIds.length > 0) {
+          const existingCategories = await tx
+            .select({
+              id: recipeCategories.id,
+            })
+            .from(recipeCategories)
+            .where(inArray(recipeCategories.id, dto.categoryIds));
+
+          if (existingCategories.length !== dto.categoryIds.length) {
+            throw new NotFoundException(
+              'One or more categories were not found',
+            );
+          }
+        }
+
         await tx
           .delete(recipeCategoriesMap)
           .where(eq(recipeCategoriesMap.recipeId, recipeId));
@@ -1104,13 +834,26 @@ export class RecipesService {
         }
       }
 
-      /*
-       * ------------------------------------------------------
-       * 12. Replace diet types
-       * ------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Diet types
+      // --------------------------------------------------------
 
       if (dto.dietTypeIds !== undefined) {
+        if (dto.dietTypeIds.length > 0) {
+          const existingDietTypes = await tx
+            .select({
+              id: dietTypes.id,
+            })
+            .from(dietTypes)
+            .where(inArray(dietTypes.id, dto.dietTypeIds));
+
+          if (existingDietTypes.length !== dto.dietTypeIds.length) {
+            throw new NotFoundException(
+              'One or more diet types were not found',
+            );
+          }
+        }
+
         await tx
           .delete(recipeDietTypes)
           .where(eq(recipeDietTypes.recipeId, recipeId));
@@ -1125,13 +868,24 @@ export class RecipesService {
         }
       }
 
-      /*
-       * ------------------------------------------------------
-       * 13. Replace allergens
-       * ------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Allergens
+      // --------------------------------------------------------
 
       if (dto.allergenIds !== undefined) {
+        if (dto.allergenIds.length > 0) {
+          const existingAllergens = await tx
+            .select({
+              id: allergens.id,
+            })
+            .from(allergens)
+            .where(inArray(allergens.id, dto.allergenIds));
+
+          if (existingAllergens.length !== dto.allergenIds.length) {
+            throw new NotFoundException('One or more allergens were not found');
+          }
+        }
+
         await tx
           .delete(recipeAllergens)
           .where(eq(recipeAllergens.recipeId, recipeId));
@@ -1146,13 +900,24 @@ export class RecipesService {
         }
       }
 
-      /*
-       * ------------------------------------------------------
-       * 14. Replace foods
-       * ------------------------------------------------------
-       */
+      // --------------------------------------------------------
+      // Foods
+      // --------------------------------------------------------
 
       if (dto.foodIds !== undefined) {
+        if (dto.foodIds.length > 0) {
+          const existingFoods = await tx
+            .select({
+              id: foods.id,
+            })
+            .from(foods)
+            .where(inArray(foods.id, dto.foodIds));
+
+          if (existingFoods.length !== dto.foodIds.length) {
+            throw new NotFoundException('One or more foods were not found');
+          }
+        }
+
         await tx.delete(recipeFoods).where(eq(recipeFoods.recipeId, recipeId));
 
         if (dto.foodIds.length > 0) {
@@ -1165,65 +930,93 @@ export class RecipesService {
         }
       }
 
-      return recipeId;
+      // --------------------------------------------------------
+      // Nutrition
+      // --------------------------------------------------------
+
+      if (dto.nutrition !== undefined) {
+        const [existingNutrition] = await tx
+          .select({
+            id: recipeNutrition.id,
+          })
+          .from(recipeNutrition)
+          .where(eq(recipeNutrition.recipeId, recipeId))
+          .limit(1);
+
+        if (existingNutrition) {
+          await tx
+            .update(recipeNutrition)
+            .set({
+              calories: dto.nutrition.calories,
+              protein: dto.nutrition.protein,
+              carbohydrates: dto.nutrition.carbohydrates,
+              fat: dto.nutrition.fat,
+              fiber: dto.nutrition.fiber,
+              sugar: dto.nutrition.sugar,
+              sodium: dto.nutrition.sodium,
+              updatedAt: new Date(),
+            })
+            .where(eq(recipeNutrition.id, existingNutrition.id));
+        } else {
+          await tx.insert(recipeNutrition).values({
+            recipeId,
+
+            calories: dto.nutrition.calories,
+
+            protein: dto.nutrition.protein,
+
+            carbohydrates: dto.nutrition.carbohydrates,
+
+            fat: dto.nutrition.fat,
+
+            fiber: dto.nutrition.fiber,
+
+            sugar: dto.nutrition.sugar,
+
+            sodium: dto.nutrition.sodium,
+          });
+        }
+      }
     });
 
-    /*
-     * Fetch the complete recipe
-     * after the transaction commits.
-     */
-
-    return this.getRecipeById(updatedRecipeId);
+    // Transaction has committed here.
+    return this.getRecipeById(recipeId);
   }
 
-  /*
-   * ============================================================
-   * DELETE RECIPE
-   * ============================================================
-   */
+  // ============================================================
+  // DELETE
+  // ============================================================
 
   async deleteRecipe(userId: string, recipeId: string) {
-    return db.transaction(async (tx) => {
-      /*
-       * ------------------------------------------------------
-       * Find recipe
-       * ------------------------------------------------------
-       */
+    await this.assertRecipeOwnership(userId, recipeId);
 
-      const [existingRecipe] = await tx
-        .select({
-          id: recipes.id,
-          createdBy: recipes.createdBy,
-        })
-        .from(recipes)
-        .where(eq(recipes.id, recipeId))
-        .limit(1);
+    await db.delete(recipes).where(eq(recipes.id, recipeId));
 
-      if (!existingRecipe) {
-        throw new NotFoundException('Recipe not found');
-      }
+    return null;
+  }
 
-      /*
-       * ------------------------------------------------------
-       * Ownership check
-       * ------------------------------------------------------
-       */
+  // ============================================================
+  // OWNERSHIP
+  // ============================================================
 
-      if (existingRecipe.createdBy !== userId) {
-        throw new ForbiddenException(
-          'You do not have permission to delete this recipe',
-        );
-      }
+  private async assertRecipeOwnership(userId: string, recipeId: string) {
+    const [recipe] = await db
+      .select({
+        id: recipes.id,
+        createdBy: recipes.createdBy,
+      })
+      .from(recipes)
+      .where(eq(recipes.id, recipeId))
+      .limit(1);
 
-      /*
-       * ------------------------------------------------------
-       * Delete recipe
-       * ------------------------------------------------------
-       */
+    if (!recipe) {
+      throw new NotFoundException('Recipe not found');
+    }
 
-      await tx.delete(recipes).where(eq(recipes.id, recipeId));
+    if (recipe.createdBy !== userId) {
+      throw new ConflictException('You can only modify recipes created by you');
+    }
 
-      return null;
-    });
+    return recipe;
   }
 }

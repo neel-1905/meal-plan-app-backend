@@ -31,3 +31,5 @@ export * from './grocery-items.schema.js';
 export * from './cooked-meals.schema.js';
 
 export * from './recipe-feedback.schema.js';
+
+export * from './recipe-nutrition.schema.js';
