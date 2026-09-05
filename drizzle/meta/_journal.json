@@ -120,6 +120,13 @@
       "when": 1788632301883,
       "tag": "0016_add_cooked_meals",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788633900616,
+      "tag": "0017_recipe_feedback_table",
+      "breakpoints": true
     }
   ]
 }
