@@ -78,6 +78,13 @@
       "when": 1788611191924,
       "tag": "0010_add_recipe-ingredients_table",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788611436487,
+      "tag": "0011_add_recipe_instruction_ingredients_table",
+      "breakpoints": true
     }
   ]
 }

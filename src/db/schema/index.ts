@@ -11,3 +11,5 @@ export * from './foods.schema.js';
 export * from './ingredients.schema.js';
 export * from './recipes.schema.js';
 export * from './recipe-ingredients.schema.js';
+export * from './recipe-instructions.schema.js';
+export * from './recipe-instruction-ingredients.schema.js';
