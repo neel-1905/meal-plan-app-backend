@@ -12,6 +12,7 @@ import { FoodsModule } from './features/foods/foods.module.js';
 import { UserDislikedFoodsModule } from './features/user-disliked-foods/user-disliked-foods.module.js';
 import { RecipesModule } from './features/recipes/recipes.module.js';
 import { MealPlansModule } from './features/meal-plans/meal-plans.module.js';
+import { RecipeFavoritesModule } from './features/recipe-favorites/recipe-favorites.module.js';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { MealPlansModule } from './features/meal-plans/meal-plans.module.js';
     UserDislikedFoodsModule,
     RecipesModule,
     MealPlansModule,
+    RecipeFavoritesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
