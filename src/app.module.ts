@@ -13,6 +13,7 @@ import { UserDislikedFoodsModule } from './features/user-disliked-foods/user-dis
 import { RecipesModule } from './features/recipes/recipes.module.js';
 import { MealPlansModule } from './features/meal-plans/meal-plans.module.js';
 import { RecipeFavoritesModule } from './features/recipe-favorites/recipe-favorites.module.js';
+import { HomeModule } from './features/home/home.module.js';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { RecipeFavoritesModule } from './features/recipe-favorites/recipe-favori
     RecipesModule,
     MealPlansModule,
     RecipeFavoritesModule,
+    HomeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

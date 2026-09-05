@@ -17,3 +17,4 @@ export * from './recipe-categories.schema.js';
 export * from './recipe-categories-map.schema.js';
 export * from './meal-plans.schema.js';
 export * from './recipe-favorites.schema.js';
+export * from './user-disliked-foods.schema.js';
