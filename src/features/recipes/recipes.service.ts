@@ -9,8 +9,11 @@ import { eq, asc, count, desc, ilike, inArray, and } from 'drizzle-orm';
 import { db } from '../../lib/db.js';
 import {
   ingredients,
+  recipeAllergens,
   recipeCategories,
   recipeCategoriesMap,
+  recipeDietTypes,
+  recipeFoods,
   recipeIngredients,
   recipeInstructionIngredients,
   recipeInstructions,
@@ -195,6 +198,33 @@ export class RecipesService {
             categoryId,
           })),
         );
+
+        if (dto.dietTypeIds.length > 0) {
+          await tx.insert(recipeDietTypes).values(
+            dto.dietTypeIds.map((dietTypeId) => ({
+              recipeId: recipe.id,
+              dietTypeId,
+            })),
+          );
+        }
+
+        if (dto.allergenIds.length > 0) {
+          await tx.insert(recipeAllergens).values(
+            dto.allergenIds.map((allergenId) => ({
+              recipeId: recipe.id,
+              allergenId,
+            })),
+          );
+        }
+
+        if (dto.foodIds.length > 0) {
+          await tx.insert(recipeFoods).values(
+            dto.foodIds.map((foodId) => ({
+              recipeId: recipe.id,
+              foodId,
+            })),
+          );
+        }
       }
 
       /*
@@ -206,6 +236,9 @@ export class RecipesService {
         ingredients: createdIngredients,
         instructions: createdInstructions,
         categoryIds,
+        dietTypeIds: dto.dietTypeIds,
+        allergenIds: dto.allergenIds,
+        foodIds: dto.foodIds,
       };
     });
   }

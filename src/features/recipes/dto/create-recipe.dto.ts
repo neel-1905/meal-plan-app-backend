@@ -49,4 +49,16 @@ export class CreateRecipeDto {
   @IsArray()
   @IsUUID('4', { each: true })
   categoryIds: string[];
+
+  @IsArray()
+  @IsUUID('4', { each: true })
+  dietTypeIds: string[];
+
+  @IsArray()
+  @IsUUID('4', { each: true })
+  allergenIds: string[];
+
+  @IsArray()
+  @IsUUID('4', { each: true })
+  foodIds: string[];
 }
