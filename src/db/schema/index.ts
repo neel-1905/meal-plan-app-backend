@@ -8,3 +8,4 @@ export * from './user-diet-types.schema.js';
 export * from './allergens.schema.js';
 export * from './user-allergens.js';
 export * from './foods.schema.js';
+export * from './ingredients.schema.js';

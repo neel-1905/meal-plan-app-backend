@@ -57,6 +57,13 @@
       "when": 1788547495680,
       "tag": "0007_add_reminder",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788610832620,
+      "tag": "0008_add_ingredients_table",
+      "breakpoints": true
     }
   ]
 }

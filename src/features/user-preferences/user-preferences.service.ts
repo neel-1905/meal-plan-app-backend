@@ -20,10 +20,7 @@ export class UserPreferencesService {
     return preferences;
   }
 
-  async updatePreferences(
-    userId: string,
-    dto: UpdateUserPreferencesDto,
-  ) {
+  async updatePreferences(userId: string, dto: UpdateUserPreferencesDto) {
     const [preferences] = await db
       .insert(userPreferences)
       .values({
@@ -48,4 +45,5 @@ export class UserPreferencesService {
       .returning();
 
     return preferences;
+  }
 }
