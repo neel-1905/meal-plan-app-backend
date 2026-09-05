@@ -10,6 +10,8 @@ import { UserAllergensModule } from './features/user-allergens/user-allergens.mo
 import { AllergensModule } from './features/allergens/allergens.module.js';
 import { FoodsModule } from './features/foods/foods.module.js';
 import { UserDislikedFoodsModule } from './features/user-disliked-foods/user-disliked-foods.module.js';
+import { RecipesModule } from './features/recipes/recipes.module.js';
+import { MealPlansModule } from './features/meal-plans/meal-plans.module.js';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { UserDislikedFoodsModule } from './features/user-disliked-foods/user-dis
     AllergensModule,
     FoodsModule,
     UserDislikedFoodsModule,
+    RecipesModule,
+    MealPlansModule,
   ],
   controllers: [AppController],
   providers: [AppService],

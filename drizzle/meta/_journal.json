@@ -92,6 +92,13 @@
       "when": 1788611624152,
       "tag": "0012_add_recipe_categories_and_map_table",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788616537695,
+      "tag": "0013_unique_date_slot_meal_plan",
+      "breakpoints": true
     }
   ]
 }
