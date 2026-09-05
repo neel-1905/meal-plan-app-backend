@@ -17,6 +17,7 @@ import { HomeModule } from './features/home/home.module.js';
 import { CollectionsModule } from './features/collections/collections.module.js';
 import { GroceryListModule } from './features/grocery-list/grocery-list.module.js';
 import { CookedMealsModule } from './features/cooked-meals/cooked-meals.module.js';
+import { RecommendationsModule } from './features/recommendations/recommendations.module.js';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { CookedMealsModule } from './features/cooked-meals/cooked-meals.module.j
     CollectionsModule,
     GroceryListModule,
     CookedMealsModule,
+    RecommendationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
