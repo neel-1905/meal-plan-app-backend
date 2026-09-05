@@ -1,5 +1,4 @@
 import {
-  ArrayNotEmpty,
   IsArray,
   IsInt,
   IsOptional,
@@ -39,14 +38,12 @@ export class UpdateRecipeDto {
 
   @IsOptional()
   @IsArray()
-  @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => CreateRecipeIngredientDto)
   ingredients?: CreateRecipeIngredientDto[];
 
   @IsOptional()
   @IsArray()
-  @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => CreateRecipeInstructionDto)
   instructions?: CreateRecipeInstructionDto[];
@@ -55,4 +52,19 @@ export class UpdateRecipeDto {
   @IsArray()
   @IsUUID('4', { each: true })
   categoryIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  dietTypeIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  allergenIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  foodIds?: string[];
 }

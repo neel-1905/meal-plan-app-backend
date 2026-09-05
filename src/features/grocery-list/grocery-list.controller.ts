@@ -21,7 +21,7 @@ import { UpdateGroceryItemDto } from './dto/update-grocery-item.dto.js';
 import { GroceryListService } from './grocery-list.service.js';
 
 @Controller('grocery-lists')
-export class GroceryListsController {
+export class GroceryListController {
   constructor(private readonly groceryListsService: GroceryListService) {}
 
   // =====================================================

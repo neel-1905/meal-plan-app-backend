@@ -27,3 +27,5 @@ export * from './collection-recipes.schema.js';
 
 export * from './grocery-lists.schema.js';
 export * from './grocery-items.schema.js';
+
+export * from './cooked-meals.schema.js';
