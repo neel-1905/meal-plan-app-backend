@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { and, asc, count, desc, eq, ilike, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, sql } from 'drizzle-orm';
 
 import { db } from '../../lib/db.js';
 
@@ -610,46 +610,16 @@ export class RecipesService {
    */
 
   async getRecipes(query: RecipeQueryDto) {
-    const { page = 1, limit = 10, search, categoryId } = query;
-
-    const offset = (page - 1) * limit;
-
-    /*
-     * --------------------------------------------------------
-     * Find recipes in category
-     * --------------------------------------------------------
-     */
-
-    let categoryRecipeIds: string[] | undefined;
-
-    if (categoryId) {
-      const categoryRecipes = await db
-        .select({
-          recipeId: recipeCategoriesMap.recipeId,
-        })
-        .from(recipeCategoriesMap)
-        .where(eq(recipeCategoriesMap.categoryId, categoryId));
-
-      categoryRecipeIds = categoryRecipes.map((row) => row.recipeId);
-
-      if (categoryRecipeIds.length === 0) {
-        return {
-          data: [],
-          meta: {
-            page,
-            limit,
-            total: 0,
-            totalPages: 0,
-          },
-        };
-      }
-    }
-
-    /*
-     * --------------------------------------------------------
-     * Build filters
-     * --------------------------------------------------------
-     */
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      categoryId,
+      dietTypeId,
+      maxCookingTime,
+      sortBy,
+      sortOrder,
+    } = query;
 
     const conditions = [];
 
@@ -657,20 +627,51 @@ export class RecipesService {
       conditions.push(ilike(recipes.name, `%${search}%`));
     }
 
-    if (categoryRecipeIds) {
-      conditions.push(inArray(recipes.id, categoryRecipeIds));
+    if (maxCookingTime !== undefined) {
+      conditions.push(sql`${recipes.cookingTime} <= ${maxCookingTime}`);
     }
 
-    const whereCondition =
-      conditions.length > 0 ? and(...conditions) : undefined;
+    if (categoryId) {
+      conditions.push(
+        sql`EXISTS (
+           SELECT 1
+           FROM ${recipeCategoriesMap}
+           WHERE ${recipeCategoriesMap.recipeId} = ${recipes.id}
+           AND ${recipeCategoriesMap.categoryId} = ${categoryId}
+         )`,
+      );
+    }
 
-    /*
-     * --------------------------------------------------------
-     * Fetch recipes + count
-     * --------------------------------------------------------
-     */
+    if (dietTypeId) {
+      conditions.push(
+        sql`EXISTS (
+           SELECT 1
+           FROM ${recipeDietTypes}
+           WHERE ${recipeDietTypes.recipeId} = ${recipes.id}
+           AND ${recipeDietTypes.dietTypeId} = ${dietTypeId}
+         )`,
+      );
+    }
 
-    const [recipeRows, totalRows] = await Promise.all([
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    let orderBy;
+
+    if (sortBy === 'name') {
+      orderBy = sortOrder === 'desc' ? desc(recipes.name) : asc(recipes.name);
+    } else if (sortBy === 'cookingTime') {
+      orderBy =
+        sortOrder === 'desc'
+          ? desc(recipes.cookingTime)
+          : asc(recipes.cookingTime);
+    } else {
+      orderBy =
+        sortOrder === 'asc' ? asc(recipes.createdAt) : desc(recipes.createdAt);
+    }
+
+    const offset = (page - 1) * limit;
+
+    const [data, totalResult] = await Promise.all([
       db
         .select({
           id: recipes.id,
@@ -684,24 +685,23 @@ export class RecipesService {
           updatedAt: recipes.updatedAt,
         })
         .from(recipes)
-        .where(whereCondition)
-        .orderBy(desc(recipes.createdAt))
+        .where(whereClause)
+        .orderBy(orderBy)
         .limit(limit)
         .offset(offset),
 
       db
         .select({
-          count: count(),
+          count: sql<number>`count(*)`,
         })
         .from(recipes)
-        .where(whereCondition),
+        .where(whereClause),
     ]);
 
-    const total = Number(totalRows[0]?.count ?? 0);
+    const total = Number(totalResult[0]?.count ?? 0);
 
     return {
-      data: recipeRows,
-
+      data,
       meta: {
         page,
         limit,
