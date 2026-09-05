@@ -24,3 +24,6 @@ export * from './recipe-foods.schema.js';
 
 export * from './collections.schema.js';
 export * from './collection-recipes.schema.js';
+
+export * from './grocery-lists.schema.js';
+export * from './grocery-items.schema.js';
