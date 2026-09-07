@@ -7,7 +7,7 @@ if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL)
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function sendPasswordResetEmail(email: string, url: string) {
-  const res = resend.emails.send({
+  const res = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL!,
     to: email,
     subject: 'Reset your password',
